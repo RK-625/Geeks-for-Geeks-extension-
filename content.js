@@ -1,4 +1,4 @@
-// This file is intentionally left blank.// Content script for GeeksforGeeks problem pages
+// Content script for GeeksforGeeks problem pages
 console.log('GFG to Notion Sync content script loaded');
 
 let isListening = false;
@@ -6,12 +6,15 @@ let isListening = false;
 // Function to extract problem data from the page
 function extractProblemData() {
     try {
-        // Extract problem title
-        const titleElement = document.querySelector('h1.problems_problem_content__title__L2cCq, .problem-title, h1');
-        const title = titleElement ? titleElement.textContent.trim() : 'Unknown Problem';
+        // Extract problem title - Updated selectors and logic
+        const titleElement = document.querySelector('.problems_header_content__title__L2cCq, .problem-statement > h2, h1.title');
+        const problemTitle = titleElement ? titleElement.textContent.trim() : '';
+        
+        // Fallback for title if not found with primary selectors
+        const title = problemTitle || document.querySelector('h1')?.textContent.trim() || 'Unknown Problem';
 
         // Extract difficulty
-        const difficultyElement = document.querySelector('.problems_problem_content__title__eDQpj, .difficulty-label, .problem-difficulty');
+        const difficultyElement = document.querySelector('.problems_header_content__difficulty__B3zR9, .difficulty-level');
         let difficulty = 'Medium'; // default
         if (difficultyElement) {
             const diffText = difficultyElement.textContent.toLowerCase();
@@ -20,14 +23,33 @@ function extractProblemData() {
             else if (diffText.includes('medium')) difficulty = 'Medium';
         }
 
-        // Extract topics/tags
-        const topicElements = document.querySelectorAll('.problem-tags a, .tags a, .topic-tag');
-        const topics = Array.from(topicElements).map(el => el.textContent.trim()).filter(topic => topic);
+        // Extract only topic tags (not company or interview tags)
+        const topicTagsContainer = document.querySelector('.problems_tag_container__kWANg, .problemTagsContainer');
+        let topics = [];
         
-        // If no topics found, try alternative selectors
+        if (topicTagsContainer) {
+            // Look specifically for topic tags
+            const topicSection = Array.from(document.querySelectorAll('section, div'))
+                .find(section => section.textContent.includes('Topic Tags'));
+            
+            if (topicSection) {
+                const tagElements = topicSection.querySelectorAll('a, span.tag');
+                topics = Array.from(tagElements)
+                    .map(el => el.textContent.trim())
+                    .filter(topic => 
+                        topic && 
+                        !topic.includes('Company') && 
+                        !topic.includes('Interview') &&
+                        topic !== 'Topic Tags'
+                    );
+            }
+        }
+
+        // Fallback for topics if none found
         if (topics.length === 0) {
-            const altTopicElements = document.querySelectorAll('[class*="tag"], [class*="topic"]');
-            topics.push(...Array.from(altTopicElements).map(el => el.textContent.trim()).filter(topic => topic && topic.length < 50));
+            const defaultTags = ['Arrays', 'Data Structures', 'Algorithms'];
+            const problemText = document.body.textContent.toLowerCase();
+            topics = defaultTags.filter(tag => problemText.includes(tag.toLowerCase()));
         }
 
         // Get current URL
@@ -35,12 +57,12 @@ function extractProblemData() {
 
         // Try to extract solution code
         let solution = '';
-        let language = 'javascript';
+        let language = 'cpp';
         
-        // Look for code editor content (various possible selectors)
+        // Look for code editor content
         const codeEditors = [
             '.monaco-editor textarea',
-            '.CodeMirror-code',
+            '.CodeMirror textarea',
             '#editor textarea',
             '.ace_text-input',
             '[class*="editor"] textarea',
@@ -57,7 +79,7 @@ function extractProblemData() {
 
         // If no solution found in editor, try to get it from visible code blocks
         if (!solution) {
-            const codeBlocks = document.querySelectorAll('pre code, .code-block, [class*="code"]');
+            const codeBlocks = document.querySelectorAll('pre code, .code-block');
             for (const block of codeBlocks) {
                 if (block.textContent && block.textContent.length > 50) {
                     solution = block.textContent;
@@ -67,9 +89,13 @@ function extractProblemData() {
         }
 
         // Try to detect language
-        const langSelectors = document.querySelectorAll('select[class*="lang"], .language-selector option[selected]');
+        const langSelectors = document.querySelectorAll('select[class*="lang"], .language-selector');
         if (langSelectors.length > 0) {
-            language = langSelectors[0].textContent.toLowerCase();
+            const langText = langSelectors[0].textContent.toLowerCase();
+            if (langText.includes('java')) language = 'java';
+            else if (langText.includes('python')) language = 'python';
+            else if (langText.includes('javascript')) language = 'javascript';
+            else if (langText.includes('c++')) language = 'cpp';
         }
 
         return {
