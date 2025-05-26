@@ -1,28 +1,36 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension Project",
+  "name": "GFG to Notion Sync",
   "version": "1.0",
-  "description": "A sample Chrome extension project.",
+  "description": "Automatically sync solved GeeksforGeeks problems to Notion database",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://api.notion.com/*",
+    "https://www.geeksforgeeks.org/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": ["https://www.geeksforgeeks.org/problems/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "images/icon16.png",
       "48": "images/icon48.png",
       "128": "images/icon128.png"
     }
   },
+  "options_page": "options.html",
   "icons": {
     "16": "images/icon16.png",
     "48": "images/icon48.png",
