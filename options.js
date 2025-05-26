@@ -75,9 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('Please fill in both Notion API Key and Database ID');
             }
 
-            // Validate API key format
-            if (!settings.notionApiKey.startsWith('secret_')) {
-                throw new Error('Invalid API key format. It should start with "secret_"');
+            // Updated validation to accept both ntn_ and secret_ prefixes
+            if (!settings.notionApiKey.startsWith('ntn_') && !settings.notionApiKey.startsWith('secret_')) {
+                throw new Error('Invalid API key format. It should start with "ntn_" or "secret_"');
             }
 
             // Validate Database ID format (UUID)
